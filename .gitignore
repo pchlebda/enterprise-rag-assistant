@@ -1,0 +1,46 @@
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+
+# IDE — IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# IDE — VS Code
+.vscode/
+
+# IDE — Eclipse
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Environment — never commit real secrets
+.env
+*.env
+!.env.example
+
+# Docker overrides
+docker-compose.override.yml
+compose.override.yml
+
+# Java runtime
+*.class
+hs_err_pid*
+replay_pid*
