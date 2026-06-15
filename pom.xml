@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.6</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.enterpriserag</groupId>
+    <artifactId>enterprise-rag-assistant</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Enterprise RAG Assistant</name>
+    <description>
+        Production-grade RAG platform: async document ingestion via Kafka + transactional outbox,
+        vector search with pgvector, grounded Q&amp;A with source citations.
+        Hexagonal architecture, multi-tenant, provider-abstracted LLM layer.
+    </description>
+
+    <modules>
+        <module>rag-domain</module>
+        <module>rag-application</module>
+        <module>rag-adapters</module>
+        <module>rag-bootstrap</module>
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Third-party library versions not managed by Spring Boot BOM -->
+        <langchain4j.version>0.35.0</langchain4j.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <archunit.version>1.2.1</archunit.version>
+        <springdoc.version>2.3.0</springdoc.version>
+        <pgvector-java.version>0.1.6</pgvector-java.version>
+        <resilience4j.version>2.1.0</resilience4j.version>
+        <logstash-logback.version>7.4</logstash-logback.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Internal modules — explicit version avoids ordering sensitivity -->
+            <dependency>
+                <groupId>com.enterpriserag</groupId>
+                <artifactId>rag-domain</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.enterpriserag</groupId>
+                <artifactId>rag-application</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.enterpriserag</groupId>
+                <artifactId>rag-adapters</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- LangChain4j BOM — provider-abstracted LLM + embedding + document parsing -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-bom</artifactId>
+                <version>${langchain4j.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- ArchUnit — hexagonal boundary enforcement in tests -->
+            <dependency>
+                <groupId>com.tngtech.archunit</groupId>
+                <artifactId>archunit-junit5</artifactId>
+                <version>${archunit.version}</version>
+            </dependency>
+
+            <!-- MapStruct — compile-time DTO ↔ domain mapping (no reflection) -->
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
+
+            <!-- SpringDoc OpenAPI — Swagger UI + OpenAPI 3 spec generation -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+
+            <!-- pgvector Java type support for JDBC / JPA -->
+            <dependency>
+                <groupId>com.pgvector</groupId>
+                <artifactId>pgvector</artifactId>
+                <version>${pgvector-java.version}</version>
+            </dependency>
+
+            <!-- Resilience4j — retry / circuit-breaker around LLM calls -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-spring-boot3</artifactId>
+                <version>${resilience4j.version}</version>
+            </dependency>
+
+            <!-- Structured JSON logging for log aggregation pipelines -->
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-logback.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <parameters>true</parameters>
+                        <!-- MapStruct annotation processor — only active in modules that declare it -->
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

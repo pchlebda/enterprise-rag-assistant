@@ -1,0 +1,16 @@
+# Local development overrides — activate with --spring.profiles.active=local
+# Assumes Docker Compose infra is running (docker compose up -d)
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ragdb
+    username: raguser
+    password: ragpassword
+
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    com.enterpriserag: DEBUG
+    org.flywaydb: DEBUG
+    org.hibernate.SQL: DEBUG

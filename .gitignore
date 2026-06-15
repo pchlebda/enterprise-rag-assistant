@@ -44,3 +44,6 @@ compose.override.yml
 *.class
 hs_err_pid*
 replay_pid*
+
+# Internal planning docs — not for public repo
+plan.md
