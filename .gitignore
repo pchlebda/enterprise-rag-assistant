@@ -12,7 +12,7 @@ dependency-reduced-pom.xml
 *.iml
 *.ipr
 *.iws
-out/
+/out/
 
 # IDE — VS Code
 .vscode/

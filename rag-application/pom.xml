@@ -23,6 +23,13 @@
             <artifactId>rag-domain</artifactId>
         </dependency>
 
+        <!-- Spring @Service and @Transactional — application layer may use Spring for wiring.
+             Domain layer must not (enforced by ArchUnit). -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

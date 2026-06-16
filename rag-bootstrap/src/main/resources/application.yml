@@ -31,6 +31,21 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
+  # RFC 7807 problem+json responses for validation errors (no custom @RestControllerAdvice needed)
+  mvc:
+    problemdetails:
+      enabled: true
+
+openai:
+  api-key: ${OPENAI_API_KEY:not-configured}
+  model-name: ${OPENAI_MODEL_NAME:gpt-4o-mini}
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
 server:
   port: ${SERVER_PORT:8080}
   shutdown: graceful

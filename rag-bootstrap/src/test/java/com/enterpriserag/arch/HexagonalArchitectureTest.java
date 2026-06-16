@@ -6,14 +6,6 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
-/**
- * Executable specification of the hexagonal architecture contract.
- * Violations block the build — they are bugs, not warnings.
- *
- * Dependency direction enforced:
- *   adapters → application → domain   (inward only)
- *   bootstrap wires everything; nothing else may import bootstrap.
- */
 @AnalyzeClasses(packages = "com.enterpriserag")
 class HexagonalArchitectureTest {
 
