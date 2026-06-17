@@ -28,8 +28,17 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 55MB
+
   lifecycle:
     timeout-per-shutdown-phase: 30s
+
+storage:
+  local:
+    base-dir: ${STORAGE_BASE_DIR:${java.io.tmpdir}/rag-storage}
 
   # RFC 7807 problem+json responses for validation errors (no custom @RestControllerAdvice needed)
   mvc:
