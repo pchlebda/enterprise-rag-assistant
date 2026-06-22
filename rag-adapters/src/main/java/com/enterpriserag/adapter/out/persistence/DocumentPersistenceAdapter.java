@@ -1,6 +1,7 @@
 package com.enterpriserag.adapter.out.persistence;
 
 import com.enterpriserag.domain.document.model.Document;
+import com.enterpriserag.domain.document.model.DocumentStatus;
 import com.enterpriserag.domain.document.port.out.DocumentRepository;
 import com.enterpriserag.domain.shared.model.DocumentId;
 import com.enterpriserag.domain.shared.model.TenantId;
@@ -35,6 +36,11 @@ public class DocumentPersistenceAdapter implements DocumentRepository {
         return jpaRepository.findAllByTenantId(tenantId.value()).stream()
                 .map(this::toDomain)
                 .toList();
+    }
+
+    @Override
+    public void updateStatus(DocumentId id, DocumentStatus newStatus) {
+        jpaRepository.updateStatusById(id.value(), newStatus);
     }
 
     private Document toDomain(DocumentJpaEntity e) {

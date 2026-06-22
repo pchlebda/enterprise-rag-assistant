@@ -1,14 +1,18 @@
 package com.enterpriserag.application.document;
 
+import com.enterpriserag.domain.document.model.Document;
 import com.enterpriserag.domain.document.model.DocumentStatus;
+import com.enterpriserag.domain.document.model.DocumentUploadedEvent;
 import com.enterpriserag.domain.document.port.in.IngestDocumentCommand;
 import com.enterpriserag.domain.document.port.out.DocumentRepository;
+import com.enterpriserag.domain.document.port.out.EventPublisherPort;
 import com.enterpriserag.domain.document.port.out.FileStoragePort;
 import com.enterpriserag.domain.shared.model.DocumentId;
 import com.enterpriserag.domain.shared.model.TenantId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,15 +21,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 class DocumentIngestionServiceTest {
 
     private DocumentId savedId;
+    private List<DocumentUploadedEvent> publishedEvents;
     private DocumentIngestionService service;
 
     @BeforeEach
     void setUp() {
+        publishedEvents = new ArrayList<>();
+
         FileStoragePort storageStub = (tenant, docId, filename, content) -> "file:///tmp/" + filename;
 
         DocumentRepository repositoryStub = new DocumentRepository() {
             @Override
-            public DocumentId save(com.enterpriserag.domain.document.model.Document document) {
+            public DocumentId save(Document document) {
                 savedId = document.id();
                 assertThat(document.status()).isEqualTo(DocumentStatus.PENDING);
                 assertThat(document.contentHash()).isNotBlank();
@@ -34,17 +41,23 @@ class DocumentIngestionServiceTest {
             }
 
             @Override
-            public Optional<com.enterpriserag.domain.document.model.Document> findById(DocumentId id, TenantId tenantId) {
+            public Optional<Document> findById(DocumentId id, TenantId tenantId) {
                 return Optional.empty();
             }
 
             @Override
-            public List<com.enterpriserag.domain.document.model.Document> findAllByTenant(TenantId tenantId) {
+            public List<Document> findAllByTenant(TenantId tenantId) {
                 return List.of();
+            }
+
+            @Override
+            public void updateStatus(DocumentId id, DocumentStatus newStatus) {
             }
         };
 
-        service = new DocumentIngestionService(repositoryStub, storageStub);
+        EventPublisherPort publisherStub = publishedEvents::add;
+
+        service = new DocumentIngestionService(repositoryStub, storageStub, publisherStub);
     }
 
     @Test
@@ -55,6 +68,32 @@ class DocumentIngestionServiceTest {
 
         assertThat(returnedId).isNotNull();
         assertThat(returnedId).isEqualTo(savedId);
+    }
+
+    @Test
+    void publishesDocumentUploadedEventWithinSameCall() {
+        var tenantId = TenantId.generate();
+        var command = new IngestDocumentCommand(tenantId, "report.pdf", "application/pdf", 1024, new byte[]{1, 2, 3});
+
+        service.ingest(command);
+
+        assertThat(publishedEvents).hasSize(1);
+        var event = publishedEvents.get(0);
+        assertThat(event.tenantId()).isEqualTo(tenantId);
+        assertThat(event.filename()).isEqualTo("report.pdf");
+        assertThat(event.contentType()).isEqualTo("application/pdf");
+        assertThat(event.sizeBytes()).isEqualTo(1024);
+        assertThat(event.documentId()).isEqualTo(savedId);
+    }
+
+    @Test
+    void publishedEventCarriesSameDocumentIdAsReturned() {
+        var command = new IngestDocumentCommand(TenantId.generate(), "report.pdf", "application/pdf", 512, new byte[]{42});
+
+        var returnedId = service.ingest(command);
+
+        assertThat(publishedEvents).hasSize(1);
+        assertThat(publishedEvents.get(0).documentId()).isEqualTo(returnedId);
     }
 
     @Test

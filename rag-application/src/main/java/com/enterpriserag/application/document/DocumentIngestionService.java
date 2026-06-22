@@ -2,9 +2,11 @@ package com.enterpriserag.application.document;
 
 import com.enterpriserag.domain.document.model.Document;
 import com.enterpriserag.domain.document.model.DocumentStatus;
+import com.enterpriserag.domain.document.model.DocumentUploadedEvent;
 import com.enterpriserag.domain.document.port.in.IngestDocumentCommand;
 import com.enterpriserag.domain.document.port.in.IngestDocumentUseCase;
 import com.enterpriserag.domain.document.port.out.DocumentRepository;
+import com.enterpriserag.domain.document.port.out.EventPublisherPort;
 import com.enterpriserag.domain.document.port.out.FileStoragePort;
 import com.enterpriserag.domain.shared.model.DocumentId;
 import org.springframework.stereotype.Service;
@@ -20,10 +22,15 @@ public class DocumentIngestionService implements IngestDocumentUseCase {
 
     private final DocumentRepository documentRepository;
     private final FileStoragePort fileStoragePort;
+    private final EventPublisherPort eventPublisherPort;
 
-    public DocumentIngestionService(DocumentRepository documentRepository, FileStoragePort fileStoragePort) {
+    public DocumentIngestionService(
+            DocumentRepository documentRepository,
+            FileStoragePort fileStoragePort,
+            EventPublisherPort eventPublisherPort) {
         this.documentRepository = documentRepository;
         this.fileStoragePort = fileStoragePort;
+        this.eventPublisherPort = eventPublisherPort;
     }
 
     @Override
@@ -32,6 +39,7 @@ public class DocumentIngestionService implements IngestDocumentUseCase {
         var documentId = DocumentId.generate();
         var contentHash = sha256Hex(command.content());
         var storageUri = fileStoragePort.store(command.tenantId(), documentId, command.filename(), command.content());
+        var now = Instant.now();
 
         var document = new Document(
                 documentId,
@@ -43,11 +51,22 @@ public class DocumentIngestionService implements IngestDocumentUseCase {
                 storageUri,
                 DocumentStatus.PENDING,
                 null,
-                Instant.now(),
+                now,
                 null
         );
 
-        return documentRepository.save(document);
+        documentRepository.save(document);
+
+        eventPublisherPort.publish(new DocumentUploadedEvent(
+                documentId,
+                command.tenantId(),
+                command.filename(),
+                command.contentType(),
+                command.sizeBytes(),
+                now
+        ));
+
+        return documentId;
     }
 
     private String sha256Hex(byte[] content) {

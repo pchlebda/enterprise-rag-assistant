@@ -48,6 +48,12 @@
             <artifactId>langchain4j-open-ai</artifactId>
         </dependency>
 
+        <!-- Messaging — Kafka producer (outbox relay) + consumer (ingestion worker) -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- Persistence — Spring Data JPA + PostgreSQL + Flyway -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

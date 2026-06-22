@@ -16,7 +16,6 @@ spring:
   jpa:
     hibernate:
       # Flyway owns the schema; Hibernate only validates entity mappings at startup.
-      # Switch to 'none' temporarily while adding new entities before creating the migration.
       ddl-auto: none
     open-in-view: false
     properties:
@@ -36,14 +35,33 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 30s
 
+  mvc:
+    # RFC 7807 problem+json responses for validation errors
+    problemdetails:
+      enabled: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: rag-ingestion-worker
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
 storage:
   local:
     base-dir: ${STORAGE_BASE_DIR:${java.io.tmpdir}/rag-storage}
 
-  # RFC 7807 problem+json responses for validation errors (no custom @RestControllerAdvice needed)
-  mvc:
-    problemdetails:
-      enabled: true
+kafka:
+  enabled: ${KAFKA_ENABLED:false}
+  topics:
+    document-ingest: ${KAFKA_TOPIC_DOCUMENT_INGEST:doc.ingest}
+    document-ingest-dlq: ${KAFKA_TOPIC_DOCUMENT_INGEST_DLQ:doc.ingest.DLT}
+  outbox:
+    relay-interval-ms: ${KAFKA_OUTBOX_RELAY_INTERVAL_MS:1000}
 
 openai:
   api-key: ${OPENAI_API_KEY:not-configured}

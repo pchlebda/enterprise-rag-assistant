@@ -46,6 +46,10 @@ class DocumentQueryServiceTest {
                 if (tenant.equals(tenantId)) return List.of(storedDoc);
                 return List.of();
             }
+
+            @Override
+            public void updateStatus(DocumentId id, DocumentStatus newStatus) {
+            }
         };
 
         service = new DocumentQueryService(repositoryStub);

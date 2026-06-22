@@ -1,6 +1,7 @@
 package com.enterpriserag.domain.document.port.out;
 
 import com.enterpriserag.domain.document.model.Document;
+import com.enterpriserag.domain.document.model.DocumentStatus;
 import com.enterpriserag.domain.shared.model.DocumentId;
 import com.enterpriserag.domain.shared.model.TenantId;
 
@@ -11,4 +12,5 @@ public interface DocumentRepository {
     DocumentId save(Document document);
     Optional<Document> findById(DocumentId id, TenantId tenantId);
     List<Document> findAllByTenant(TenantId tenantId);
+    void updateStatus(DocumentId id, DocumentStatus newStatus);
 }

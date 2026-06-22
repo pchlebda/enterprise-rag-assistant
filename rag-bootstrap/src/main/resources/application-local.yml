@@ -9,6 +9,13 @@ spring:
   flyway:
     enabled: true
 
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+
+kafka:
+  enabled: true
+
 logging:
   level:
     com.enterpriserag: DEBUG
