@@ -1,8 +1,9 @@
 package com.enterpriserag.adapter.in.messaging;
 
-import com.enterpriserag.domain.document.model.DocumentStatus;
-import com.enterpriserag.domain.document.port.out.DocumentRepository;
+import com.enterpriserag.domain.document.port.in.IndexDocumentCommand;
+import com.enterpriserag.domain.document.port.in.IndexDocumentUseCase;
 import com.enterpriserag.domain.shared.model.DocumentId;
+import com.enterpriserag.domain.shared.model.TenantId;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -21,11 +22,11 @@ public class KafkaDocumentIngestionConsumer {
     private static final Logger log = LoggerFactory.getLogger(KafkaDocumentIngestionConsumer.class);
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
-    private final DocumentRepository documentRepository;
+    private final IndexDocumentUseCase indexDocumentUseCase;
     private final ObjectMapper objectMapper;
 
-    public KafkaDocumentIngestionConsumer(DocumentRepository documentRepository, ObjectMapper objectMapper) {
-        this.documentRepository = documentRepository;
+    public KafkaDocumentIngestionConsumer(IndexDocumentUseCase indexDocumentUseCase, ObjectMapper objectMapper) {
+        this.indexDocumentUseCase = indexDocumentUseCase;
         this.objectMapper = objectMapper;
     }
 
@@ -34,13 +35,14 @@ public class KafkaDocumentIngestionConsumer {
         try {
             Map<String, Object> event = objectMapper.readValue(payload, MAP_TYPE);
             var documentId = DocumentId.of(UUID.fromString((String) event.get("documentId")));
+            var tenantId = TenantId.of(UUID.fromString((String) event.get("tenantId")));
             var filename = (String) event.get("filename");
 
             log.info("Ingestion worker received DocumentUploaded event for document {} ({})", documentId, filename);
 
-            documentRepository.updateStatus(documentId, DocumentStatus.PROCESSING);
+            indexDocumentUseCase.index(new IndexDocumentCommand(documentId, tenantId));
 
-            log.debug("Document {} status set to PROCESSING", documentId);
+            log.debug("Document {} indexing complete", documentId);
         } catch (Exception e) {
             log.error("Failed to process ingestion event: {}", e.getMessage(), e);
             throw new IllegalStateException("Ingestion event processing failed", e);

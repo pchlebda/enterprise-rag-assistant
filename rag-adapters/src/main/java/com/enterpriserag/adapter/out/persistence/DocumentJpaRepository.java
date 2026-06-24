@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,4 +20,14 @@ interface DocumentJpaRepository extends JpaRepository<DocumentJpaEntity, UUID> {
     @Transactional
     @Query("UPDATE DocumentJpaEntity e SET e.status = :status WHERE e.id = :id")
     void updateStatusById(@Param("id") UUID id, @Param("status") DocumentStatus status);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE DocumentJpaEntity e SET e.status = 'INDEXED', e.indexedAt = :indexedAt WHERE e.id = :id")
+    void markIndexedById(@Param("id") UUID id, @Param("indexedAt") Instant indexedAt);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE DocumentJpaEntity e SET e.status = 'FAILED', e.failureReason = :reason WHERE e.id = :id")
+    void markFailedById(@Param("id") UUID id, @Param("reason") String reason);
 }

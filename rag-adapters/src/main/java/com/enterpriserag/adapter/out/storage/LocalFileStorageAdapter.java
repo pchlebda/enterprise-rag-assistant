@@ -32,4 +32,13 @@ public class LocalFileStorageAdapter implements FileStoragePort {
             throw new UncheckedIOException("Failed to store file: " + filename, e);
         }
     }
+
+    @Override
+    public byte[] load(String storageUri) {
+        try {
+            return Files.readAllBytes(Path.of(storageUri));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to load file: " + storageUri, e);
+        }
+    }
 }

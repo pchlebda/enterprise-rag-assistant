@@ -48,6 +48,26 @@
             <artifactId>langchain4j-open-ai</artifactId>
         </dependency>
 
+        <!-- Local embedding model — in-process ONNX, active when 'openai' profile is NOT set -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
+        </dependency>
+
+        <!-- PDF parsing — page-aware text extraction for the chunker adapter -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.36</version>
+        </dependency>
+
+        <!-- Hibernate native pgvector mapping (@JdbcTypeCode(SqlTypes.VECTOR)) -->
+        <dependency>
+            <groupId>org.hibernate.orm</groupId>
+            <artifactId>hibernate-vector</artifactId>
+            <version>${hibernate.version}</version>
+        </dependency>
+
         <!-- Messaging — Kafka producer (outbox relay) + consumer (ingestion worker) -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>

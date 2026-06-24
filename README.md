@@ -2,7 +2,7 @@
 
 Production-grade Retrieval-Augmented Generation platform — Java 21, Spring Boot, LangChain4j, pgvector, Kafka.
 
-> **Status: M3 — async ingestion via Kafka + transactional outbox.** Chat endpoint, document upload, and async ingestion pipeline are complete. Next: M4 (chunking + embeddings + pgvector).
+> **Status: M4 — chunking + embeddings + pgvector.** Chat endpoint, document upload, async ingestion, and PDF chunking/embedding into pgvector are complete. Next: M5 (full RAG pipeline — retrieval, grounding, citations).
 
 ---
 
@@ -34,28 +34,29 @@ adapters → application → domain
 | M1 — Chat endpoint | ✅ | `ChatModelPort` + OpenAI adapter (profile `openai`) + local echo adapter · `POST /api/v1/chat/query` · OpenAPI/Swagger |
 | M2 — Document upload | ✅ | Multipart upload, PDF validation, `LocalFileStorageAdapter`, `documents` table (Flyway V2), status lifecycle, list/get endpoints |
 | M3 — Async ingestion | ✅ | `DocumentUploadedEvent` + `EventPublisherPort` · `outbox_events` table (Flyway V3) · `TransactionalOutboxPublisher` · `OutboxRelay` (scheduled) · `KafkaDocumentIngestionConsumer` · DLQ via `DefaultErrorHandler` · status → PROCESSING |
-| M4 — Chunking + embeddings | 🔜 | Token-aware chunker, `EmbeddingModelPort`, `document_chunks` + pgvector, HNSW index |
+| M4 — Chunking + embeddings | ✅ | `PdfChunkerAdapter` (page-tagged, overlapping word-window chunks), `EmbeddingModelPort` (local MiniLM + OpenAI adapters), `document_chunks` table + pgvector (Flyway V4), HNSW index, status → INDEXED |
 | M5 — Full RAG pipeline | 🔜 | Retrieval → prompt assembly → LLM, grounding guardrails, citations |
 | M6 — AuthN/AuthZ + multi-tenancy | 🔜 | JWT, tenant claim, `@PreAuthorize`, tenant-scoped queries |
 
 ---
 
-## What exists now (M3)
+## What exists now (M4)
 
 | Area | What's there |
 |---|---|
-| Domain ports (outbound) | `ChatModelPort`, `EmbeddingModelPort` (stub), `DocumentRepository`, `FileStoragePort`, `EventPublisherPort` |
+| Domain ports (outbound) | `ChatModelPort`, `ChunkerPort`, `EmbeddingModelPort`, `DocumentChunkRepository`, `DocumentRepository`, `FileStoragePort`, `EventPublisherPort` |
 | Domain events | `DocumentUploadedEvent` — records documentId, tenantId, filename, contentType, sizeBytes, occurredAt |
 | Chat flow | `ChatUseCase` → `ChatService` → `ChatModelPort` (OpenAI or local echo) |
 | Ingestion flow | `IngestDocumentUseCase` → `DocumentIngestionService` → store file + save doc + publish outbox event (atomic TX) |
-| Async pipeline | `OutboxRelay` polls `outbox_events` every 1 s → publishes to `doc.ingest` Kafka topic → `KafkaDocumentIngestionConsumer` updates status to PROCESSING |
+| Async pipeline | `OutboxRelay` polls `outbox_events` every 1 s → publishes to `doc.ingest` Kafka topic → `KafkaDocumentIngestionConsumer` invokes `IndexDocumentUseCase` |
+| Indexing flow | `IndexDocumentUseCase` → `DocumentIndexingService` → load file → `PdfChunkerAdapter` (page-tagged, overlapping chunks) → `EmbeddingModelPort` (local MiniLM by default, OpenAI behind `openai` profile) → `DocumentChunkRepository.saveAll` → status → INDEXED (or FAILED with reason, idempotent on retry) |
 | DLQ | `DefaultErrorHandler` with 3 retries (2 s backoff) → `doc.ingest.DLT` dead-letter topic |
 | REST API | `POST /api/v1/chat/query` · `POST /api/v1/documents` (returns 202) · `GET /api/v1/documents` · `GET /api/v1/documents/{id}` |
 | OpenAPI | Swagger UI at `/swagger-ui.html`, spec at `/api-docs` |
 | Error handling | RFC 7807 `application/problem+json` via `GlobalExceptionHandler` |
 | Kafka control | `kafka.enabled` property (default `false`). Set to `true` only in `local` profile and Testcontainers integration tests — existing unit/slice tests run without Kafka |
-| Migrations | V1 pgvector extension · V2 documents table · V3 outbox_events table |
-| Tests | Domain unit tests (pure Java, no Spring) · `@WebMvcTest` slice tests · application service unit tests · `DocumentIngestionIntegrationTest` (Testcontainers Postgres) · `AsyncIngestionIntegrationTest` (Testcontainers Postgres + Kafka, Awaitility) · ArchUnit boundary guard |
+| Migrations | V1 pgvector extension · V2 documents table · V3 outbox_events table · V4 document_chunks table + HNSW index |
+| Tests | Domain unit tests (pure Java, no Spring) · `@WebMvcTest` slice tests · application service unit tests · `PdfChunkerAdapterTest` (real in-memory PDF via PDFBox) · `DocumentIngestionIntegrationTest` (Testcontainers Postgres) · `AsyncIngestionIntegrationTest` (Testcontainers Postgres + Kafka, Awaitility, asserts chunk rows + embedding dims) · ArchUnit boundary guard |
 
 ---
 
@@ -92,10 +93,11 @@ curl -X POST http://localhost:8080/api/v1/documents \
   -F "file=@/path/to/document.pdf"
 # → {"documentId":"<uuid>","status":"PENDING"}
 
-# Poll for status (changes to PROCESSING within ~1 second)
+# Poll for status — transitions PENDING → PROCESSING → INDEXED
+# (first request loads the local ONNX embedding model, so allow a few extra seconds)
 curl http://localhost:8080/api/v1/documents/<uuid> \
   -H "X-Tenant-Id: 00000000-0000-0000-0000-000000000001"
-# → {"status":"PROCESSING", ...}
+# → {"status":"INDEXED", ...}
 ```
 
 ---
@@ -113,7 +115,7 @@ rag-adapters     ← REST controllers, JPA repos, Kafka producer/consumer,
 rag-bootstrap    ← Spring Boot entry point, config, profiles
 ```
 
-### Async ingestion pipeline (M3)
+### Async ingestion + indexing pipeline (M3 + M4)
 
 ```
 POST /documents
@@ -132,8 +134,16 @@ OutboxRelay (@Scheduled 1s)
 
 KafkaDocumentIngestionConsumer
   └─ @KafkaListener("doc.ingest")
-  └─ documentRepository.updateStatus(documentId, PROCESSING)
-  └─ on failure: DefaultErrorHandler → 3 retries → "doc.ingest.DLT"
+  └─ IndexDocumentUseCase.index(documentId, tenantId)
+       ├─ documentRepository.updateStatus(documentId, PROCESSING)
+       ├─ documentChunkRepository.deleteByDocumentId(documentId)   (idempotent retry)
+       ├─ fileStoragePort.load(storageUri) → PdfChunkerAdapter.chunk(...)
+       │    → page-tagged ChunkDraft list (400-word window, 50-word overlap)
+       ├─ embeddingModelPort.embedAll(chunkTexts)                  (local MiniLM-L6-v2, 384-dim)
+       ├─ documentChunkRepository.saveAll(chunks)                  (pgvector, HNSW index)
+       └─ documentRepository.markIndexed(documentId, now)          → status = INDEXED
+            on any failure: documentRepository.markFailed(documentId, reason) → status = FAILED
+  └─ on uncaught failure: DefaultErrorHandler → 3 retries → "doc.ingest.DLT"
 ```
 
 ---

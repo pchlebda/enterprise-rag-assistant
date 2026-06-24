@@ -12,6 +12,7 @@ import com.enterpriserag.domain.shared.model.TenantId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +29,17 @@ class DocumentIngestionServiceTest {
     void setUp() {
         publishedEvents = new ArrayList<>();
 
-        FileStoragePort storageStub = (tenant, docId, filename, content) -> "file:///tmp/" + filename;
+        FileStoragePort storageStub = new FileStoragePort() {
+            @Override
+            public String store(TenantId tenant, DocumentId docId, String filename, byte[] content) {
+                return "file:///tmp/" + filename;
+            }
+
+            @Override
+            public byte[] load(String storageUri) {
+                return new byte[0];
+            }
+        };
 
         DocumentRepository repositoryStub = new DocumentRepository() {
             @Override
@@ -52,6 +63,14 @@ class DocumentIngestionServiceTest {
 
             @Override
             public void updateStatus(DocumentId id, DocumentStatus newStatus) {
+            }
+
+            @Override
+            public void markIndexed(DocumentId id, Instant indexedAt) {
+            }
+
+            @Override
+            public void markFailed(DocumentId id, String reason) {
             }
         };
 

@@ -50,6 +50,14 @@ class DocumentQueryServiceTest {
             @Override
             public void updateStatus(DocumentId id, DocumentStatus newStatus) {
             }
+
+            @Override
+            public void markIndexed(DocumentId id, Instant indexedAt) {
+            }
+
+            @Override
+            public void markFailed(DocumentId id, String reason) {
+            }
         };
 
         service = new DocumentQueryService(repositoryStub);

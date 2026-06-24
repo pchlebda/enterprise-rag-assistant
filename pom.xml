@@ -39,7 +39,6 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <archunit.version>1.2.1</archunit.version>
         <springdoc.version>2.3.0</springdoc.version>
-        <pgvector-java.version>0.1.6</pgvector-java.version>
         <resilience4j.version>2.1.0</resilience4j.version>
         <logstash-logback.version>7.4</logstash-logback.version>
     </properties>
@@ -91,13 +90,6 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
-            </dependency>
-
-            <!-- pgvector Java type support for JDBC / JPA -->
-            <dependency>
-                <groupId>com.pgvector</groupId>
-                <artifactId>pgvector</artifactId>
-                <version>${pgvector-java.version}</version>
             </dependency>
 
             <!-- Resilience4j — retry / circuit-breaker around LLM calls -->

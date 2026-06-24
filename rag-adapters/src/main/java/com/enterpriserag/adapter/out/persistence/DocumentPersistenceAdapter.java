@@ -7,6 +7,7 @@ import com.enterpriserag.domain.shared.model.DocumentId;
 import com.enterpriserag.domain.shared.model.TenantId;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +42,16 @@ public class DocumentPersistenceAdapter implements DocumentRepository {
     @Override
     public void updateStatus(DocumentId id, DocumentStatus newStatus) {
         jpaRepository.updateStatusById(id.value(), newStatus);
+    }
+
+    @Override
+    public void markIndexed(DocumentId id, Instant indexedAt) {
+        jpaRepository.markIndexedById(id.value(), indexedAt);
+    }
+
+    @Override
+    public void markFailed(DocumentId id, String reason) {
+        jpaRepository.markFailedById(id.value(), reason);
     }
 
     private Document toDomain(DocumentJpaEntity e) {
